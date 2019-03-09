@@ -1,0 +1,161 @@
+---
+title: "PB8116 Midterm Exam, 2018"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  html_notebook: default
+---
+
+
+
+# Problem 1: A classical clustering algorithm--$K$-means
+
+Clustering is an important statstical learning method that automatically group data by similar features. Let $\{\mathbf x_1,\mathbf x_2,...,\mathbf x_n \} \in \mathbb R^p$ be a collection of  $p$ dimensional data points. The $K$-means algorithm partitions data into $k$ clusters ($k$ is predetermined). We denote $\{\boldsymbol \mu_1, \boldsymbol \mu_2,...,\boldsymbol \mu_k\}$ as the  centers of the $k$ (unknown) clusters, and denote $\mathbf r_i = (r_{i,1},...,r_{i,k})\in \mathbb R^k$  as the ``hard'' cluster assignment of $\mathbf x_i$.   The cluster assignment $\mathbf r_i$ takes form $(0, 0,...,0,1,0,0)$ with $r_{i,j} =I\{ \mathbf x_i\mbox{ assigned to  cluster } j\}$. (Assign $\mathbf x_i$ to one and only one of the $k$ clusters)
+
+$k$-means essentially finds cluster centers and cluster assignments that minimize the objective function
+$$J(\mathbf r, \boldsymbol \mu) = \sum_{i=1}^n\sum_{j=1}^kr_{i,j}\|\mathbf x_i-\mu_k\|^2$$
+The k-means algorithm follows the following steps. 
+
+1. Standardize the data 
+
+2. Randomly initialize $k$ cluster centers $\{\boldsymbol \mu_1^{(0)}, \boldsymbol \mu_2^{(0)},...,\boldsymbol \mu_k^{(0)}\}$.
+
+3. Repeat the following two steps iteratively until converge.
+
++ **Find optimal cluster assignment fixing cluster centers.** Minimizing $J(\mathbf r, \boldsymbol \mu)$ over $\mathbf r$ yields
+$$ r_{i,j}^{(v+1)} = I\{j=\arg\min_j \|\mathbf x_i - \mu_j^{(v)}\|\}$$
+That is, assign $\mathbf x_i$ to cluster $j$ with minimal distance $\|\mathbf x_i - \mu_j^{(v)}\|$ , where $\mu_j^{(v)}$ is the cluster center in the $v$-th iteration.
++ **Calcuate  cluster centers using the cluster assignment in the last step.** Minimizing $J(\mathbf r, \boldsymbol \mu)$ over $\boldsymbol \mu$ yields
+$$\mu_j^{(v+1)} =\frac{\sum_{i=1}^n\mathbf x_i r_{i,j}^{(v+1)}}{\sum_{i=1}^n r_{i,j}^{(v+1)}} $$
+That is the sample mean of $\mathbf x_i$ that were assigned to the cluster $j$ in the last step.
+
+** Your jobs **
+
+1.1 Implement the $k$-means algorithm into $\mathbb R$.  
+
+\vspace{1 in}
+
+1.2. Using the following R codes to generate a mixture of 3 bivariate Guassian distribution(different means/variances), and apply the k-means algorithm to particition the sample into 3 clusters. Comparing the resluting clusters with the orginal ones, how effective is the k-means algorithm?
+
+
+```{r}
+library(MASS)
+set.seed(123123)
+Sigma <- matrix(c(1,0.5,0.5,1),2,2)
+x1 = mvrnorm(n = 200, mu=c(0,0), Sigma)
+Sigma <- matrix(c(2,0.5,0.5,2),2,2)
+x2 = mvrnorm(n = 200, mu=c(0,5), Sigma)
+Sigma <- matrix(c(3,0.5,0.5,3),2,2)
+x3 = mvrnorm(n = 200, mu=c(6,4), Sigma)
+xx = rbind(x1,x2,x3)
+plot(xx)
+```
+
+
+
+
+
+
+# Problem 2: Clustering based on Gussian Mixture
+
+Assuming that $\{\mathbf x_1,\mathbf x_2,...,\mathbf x_n \} \in \mathbb R^p$ are i.i.d. random vectors following a mixture mulitvariate normal distributions with $k$ hidden groups. 
+
+$$\mathbf x_i\sim
+\begin{cases}
+N(\boldsymbol \mu_1, \Sigma_1), \mbox{with probability }p_1 \\
+N(\boldsymbol \mu_2, \Sigma_2), \mbox{with probability }p_2\\
+\quad\quad\vdots\quad\quad,\quad\quad \vdots\\
+N(\boldsymbol \mu_k, \Sigma_k), \mbox{with probability }p_k\\
+\end{cases}
+$$
+
+$\sum_{j=1}^kp_j =1$
+
+\vspace{10pt}
+
+2.1 What is the likelihood of $\{\mathbf x_1,\mathbf x_2,...,\mathbf x_n \}$?
+
+
+\vspace{1 in}
+
+
+2.2 Let $\mathbf r_i = (r_{i,1},...,r_{i,k})\in \mathbb R^k$  as the cluster indicator of $\mathbf x_i$, which  takes form $(0, 0,...,0,1,0,0)$ with $r_{i,j} =I\{ \mathbf x_i\mbox{ belongs to  cluster } j\}$. The cluster indicator $\mathbf r_i$ is a latent variable that cannot be observed. What is complete likelihood of $(\mathbf x_i,\mathbf r_i)$. 
+
+
+\vspace{1 in}
+
+
+2.3 Derive an EM algorithm to estimate the parameter $\mathbf \mu$'s, $\mathbf \Sigma$'s and $p_j$'s. Clearly write out E-step and M-step in each iteration. 
+
+
+\vspace{1 in}
+
+
+
+2.4 Design a clustering algorithm based on the mixture Gaussian. 
+Comparing the two clustering algorithms  (EM vs k-means), what are the differences?  
+
+\vspace{1 in}
+
+
+
+2.5 Applying your Mixture Guassian EM-based clustering algoirthm to the same data that you generated in Problem 1. Which clustering method does a better job in grouping the sample?
+
+
+\vspace{1 in}
+
+
+
+2.5 If we make a more restrictive assumption such that 
+$$\mathbf x_i\sim
+\begin{cases}
+N(\boldsymbol \mu_1, \sigma^2I), \mbox{  with probability }p_1 \\
+N(\boldsymbol \mu_2, \sigma^2I), \mbox{ with probability }p_2\\
+\quad\quad\vdots\quad\quad,\quad\quad \vdots\\
+N(\boldsymbol \mu_k, \sigma^2I), \mbox{ with probability }p_k\\
+\end{cases}
+$$
+How would you adapt the E-M clustering algorithm under this restricive setting? How is 
+
+If we let $\sigma^2\rightarrow 0$, how would the E-M clustering algorithm look like?
+
+
+\vspace{1 in}
+
+
+2.6 Now genenrate a random sample following bivariate sknewed normal distribution. Apply both k-means and  Gaussian mixture EM to clustering the generated data, which method is more effective in this case? 
+```{r}
+library(sn)
+set.seed(666666)
+Omega <- matrix(c(1,0.5,0.5,1),2,2)
+x1 = rmsn(n = 200, xi=c(0,0), Omega=Omega, alpha = c(9,-6))
+Omega <- matrix(c(2,0.5,0.5,2),2,2)
+x2 = rmsn(n = 200, xi=c(0,3), Omega=Omega, alpha = c(9,-6))
+Omega <- matrix(c(3,0.5,0.5,3),2,2)
+x3 = rmsn(n = 200, xi=c(4,6), Omega=Omega, alpha = c(9,-6))
+xx = rbind((x1),(x2),(x3))
+plot(xx)
+```
+
+
+
+\vspace{1 in}
+
+
+# Problem 3. Clustering Movies
+
+*movie.csv* include over 3000  popular movies on IMDB. 
+```{r}
+library(data.table)
+IMDB=read.csv("/Users/yingwei/Dropbox/Teaching/Teaching-computing/My Teaching Files/Data/movie.csv")
+data.table(head(IMDB))
+```
+
+3.1 I would like to cluster those movies  based on their *year*, *budget*,*gross* and *imdb_score*. Based on your explorations in Problems 1 and 2, which clustering aglorithm you think is more suitable to carry out this task? And why?
+
+\vspace{1 in}
+
+3.2  Implement your prefered clustering algorithm to cluster the movie based on *year*, *budget*,*gross* and *imdb_score*.  Explore the resulting clusters, does the clustering produce meaningful groups?
+What are the features of the movies in each cluster (you may include other variables as well)? What are representative movies in each cluster?
+

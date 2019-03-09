@@ -1,0 +1,19 @@
+]0;~/Documents/columbia/S2019/Computing/midterm[?1034hChristians-MacBook-Pro-2:midterm christianpascual$ [KChristians-MacBook-Pro-2:midterm christianpascual$ git init
+Initialized empty Git repository in /Users/christianpascual/Documents/columbia/S2019/Computing/midterm/.git/
+]0;~/Documents/columbia/S2019/Computing/midtermChristians-MacBook-Pro-2:midterm christianpascual$ git add .READ[K[K[K[K[KREAD.ME[K[K[KME.md
+fatal: pathspec 'README.md' did not match any files
+]0;~/Documents/columbia/S2019/Computing/midtermChristians-MacBook-Pro-2:midterm christianpascual$ git [K[K[K[Kgit commit -m "First omi[K[K[Kcommit"
+On branch master
+
+Initial commit
+
+Untracked files:
+	[31m.Rproj.user/[m
+	[31mMidterm Exam 2018.Rmd[m
+	[31mMidterm Exam 2018.nb.html[m
+	[31mMidterm_Exam_2018-1.html[m
+	[31mMidterm_Exam_2018.html[m
+	[31mmidterm.Rproj[m
+
+nothing added to commit but untracked files present
+]0;~/Documents/columbia/S2019/Computing/midtermChristians-MacBook-Pro-2:midterm christianpascual$ git add .
