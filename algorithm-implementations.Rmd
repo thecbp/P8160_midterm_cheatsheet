@@ -1,0 +1,208 @@
+---
+title: "Algorithm Implementations"
+author: "Christian Pascual"
+date: "3/9/2019"
+output: html_document
+---
+
+```{r}
+library(datasets)
+library(knitr)
+```
+
+
+# Table of Contents
+
+* <a href="#em">EM Algorithm</a>
+  * <a href="#gauss-mix">Mixed Gaussian</a>
+  * <a href="#zip">Zero Inflated Poisson</a>
+  * <a href="#bulbs">Lightbulbs</a>
+  * <a href="#">Fisher's Genotype</a>
+  * <a href="#">ABO Blood Type</a>
+  
+  
+<h2 id="em">EM Algorithm</h2>  
+
+<h3 id="gauss-mix">Mixed Gaussian</h3>
+
+Your population is actually a mixture of two Gaussians, and you want to estimate the best $\mu_1, \sigma_1, \mu_2, \sigma_2$ to maximize the observed likelihood:
+
+$$L_{obs}(x) = \prod^n_{i=1}(1 - p)f(x_i, \mu_1, \sigma_1) + p f(x_i, \mu_2, \sigma_2)$$
+where each $f$ is just a normal density function.
+
+Your latent variable is $Z \sim Bin(1,p)$ such that if $Z = 0$, $X_i$ comes from the first normal and the second if $Z = 1$.
+
+Thus, the complete log-likelihood is:
+$$l(X,Z,\theta)  = \sum^n_{i=1}[Z_ilog(p) + (1-Z_i)log(1-p) +Z_ilogf_2 + (1-Z_i)f_1]$$
+
+#### E-step: given current parameters, what is the expectation?
+
+Define $\delta^{(t)}_i = E(Z_i|x_i, \theta^{(t)})$ as the expected value of the complete log-likelihood. $\delta^{(t)}_i$ will then become our current guess for $Z_i$.
+
+The expected value of $Z$ is the same as the expected value of a binomial. We can use Bayes' Theorem to calculate this estimate:
+
+$$\delta^{(t)} = P(Z_i = 1|x_i, \theta^{(t)}) = \frac{p^{(t)}f_2}{p^{(t)}f_2^{(t)} +(1 - p^{(t)}f_1^{(t)})}$$
+
+#### M-step: given the current estimate, what are the new parameters that maximize the complete log-likelihood?
+
+The next set of parameters $\theta^{(t+1)}$ are those that maximize the complete log-likelihood, substituting $\delta^{(t)}_i$ for $Z_i$. (ie derive with respect to each of the parameters you need and set it to zero, solve for the parameter)
+
+#### Code
+
+```{r}
+# E-step evaluating conditional means E(Z_i | X_i , pars)
+delta <- function(X, pars){
+  # X is the dataset, pars contains the current estimates for the parameters
+  phi1 <- dnorm(X, mean = pars$mu1, sd = pars$sig1)
+  phi2 <- dnorm(X, mean = pars$mu2, sd = pars$sig2)
+  return(pars$p * phi2 / ((1 - pars$p) * phi1 + pars$p * phi2))
+}
+
+# M-step - updating the parameters
+mles <- function(Z, X) {
+  n <- length(X)
+  phat <- sum(Z) / n
+  mu1hat <- sum((1 - Z) * X) / (n - sum(Z))
+  mu2hat <- sum(Z * X) / sum(Z)
+  sigmahat1 <- sqrt(sum((1 - Z) * (X - mu1hat)^2 ) / (n - sum(Z)))
+  sigmahat2 <- sqrt(sum(Z * (X - mu2hat)^2) / sum(Z))
+  return(list(phat = phat, 
+              mu1 = mu1hat, mu2 = mu2hat, 
+              sig1 = sigmahat1, sig2 = sigmahat2))
+}
+
+# The actual iteration through the algorithm
+# Added the convergence check 
+EMmix <- function(X, start, nreps = 100, tol = 1e-5) {
+  i = 0 # iteration start
+  
+  # Usually given numbers that let you recalculate Z
+  Z = delta(X, start)
+  
+  old.params = start
+
+  res = c(i, phat = old.params$phat, 
+          mu1 = old.params$mu1, mu2 = old.params$mu2,
+          sig1 = old.params$sig1, sig2 = old.params$sig2)
+  
+  diff.phat = diff.mu1 = diff.mu2 = diff.sig1 = diff.sig2 = Inf
+  
+  while (i < nreps && diff.phat > tol && 
+         diff.mu1 > tol && diff.mu2 > tol &&
+         diff.sig1 > tol && diff.sig2 > tol) {     
+    
+    i = i + 1 # increase the iteration
+    new.params <- mles(Z, X) # Recalculate params with new delt
+    
+    
+    # Convergence check
+    diff.phat = abs(new.params$phat - old.params$phat)
+    diff.mu1 = abs(new.params$mu1 - old.params$mu1)
+    diff.mu2 = abs(new.params$mu2 - old.params$mu2)
+    diff.sig1 = abs(new.params$sig1 - old.params$sig1)
+    diff.sig2 = abs(new.params$sig2 - old.params$sig2)
+    
+    Z = delta(X, new.params) # Relculate the delta
+    
+    res <- rbind(res, 
+                 c(i, phat = new.params$phat, 
+                   mu1 = new.params$mu1, mu2 = new.params$mu2,
+                   sig1 = new.params$sig1, sig2 = new.params$sig2))
+    
+    # set up for the next iteration
+    old.params = new.params
+  }
+  return(res)
+}
+
+# confirmed it works
+# data(faithful)
+# res = EMmix(faithful$waiting, 
+#             start = list(phat = 0.5, 
+#                          mu1 = 50, mu2 = 80, 
+#                          sig1 = 15, sig2 = 15))
+```
+
+<h3 id="zip">Zero-Inflated Poisson</h3>
+
+You have too many zeros in your data to be correctly modelled as a Poisson distirbution. The latent variable must be some underlying process that produces "true zeros" (women who are just widows and bore no children) and pseudo-zeros (widows who... have dead children?).
+
+The observed likelihood
+$$pI[Y_i= 0]  + (1 - p)e^{-\lambda}\frac{\lambda^{Y_i}}{y_i!}$$
+
+The latent variable is some Beroulli that describes your chance of being a true zero. Thus, there will be $z_i$ true zeros and $1-z_i$ pseudo-zeroes.
+
+The complete likelihood:
+$$\prod^n_{i=1}p^{z_i} \bigg( (1-p)e^{-\lambda}\frac{\lambda^{y_i}}{y_i!} \bigg)$$
+
+and its log-likelihood counterpart:
+$$\sum^n_{i=1} = z_ilog(p) + (1-z_i)[log(1-p) - \lambda + y_ilog(\lambda) - log(y_i!)]$$
+
+where the $p$ is the probability that the subject comes from a true zero population.
+
+#### E-step: 
+$$z_i^{(t)} = E(z_i|Y_i) = P(z_i = 1|Y_i) = \frac{p^{(t)}}{p^{(t)} + (1 - p^{(t)})e^{-\lambda}}, Y_i = 0, (0 \, \text{otherwise})$$
+
+#### M-step:
+$$p^{(t+1)} = \frac{\sum z_i^{(t)}}{n}$$
+
+$$\lambda^{(t+1)} = \frac{\sum Y_i(1 - z_i^{(t)})}{\sum z_i^{(t)}}$$
+
+#### Code:
+```{r}
+Y <- c(rep(0,3062), rep(1,587), rep(2,284), 
+       rep(3,103), rep(4,33), rep(5,4), rep(6,2))
+n <- length(Y)
+
+Q = function(Y, params){
+  mid <- NULL
+  for (ii in 1:n) {
+    if (Y[[ii]] == 0) {
+      mid[[ii]] = params$phat / (params$phat + (1 - params$phat) * exp(-params$lambda))
+    } else { 
+      mid[[ii]] = 0
+    }
+  }
+  return(mid)
+}
+
+mles <- function(Y, Z) {
+  phat <- sum(Z)/n
+  lambda <- sum(Y * (1 - Z)) / (n - sum(Z))
+  return(list(phat = phat, lambda = lambda))
+}
+
+EMmix <- function(Y, start, nreps = 100, tol = 1e-5) {
+  i = 0
+  Z = Q(Y, start)
+  old.params = start
+  res = c(iter = i, phat = start$phat, lambda = start$lambda)
+  
+  diff.phat = diff.lambda = Inf
+  
+  while (i < nreps && diff.phat > tol && diff.lambda > tol) {
+    i = i + 1
+    new.params = mles(Y, Z)
+    
+    diff.phat = abs(old.params$phat - new.params$phat)
+    diff.lambda = abs(old.params$lambda - new.params$lambda)
+    
+    Z = Q(Y, new.params)
+    res = rbind(res, 
+                c(iter = i, phat = new.params$phat, lambda = new.params$lambda))
+    old.params = new.params
+    }
+  return(res)
+  }
+
+# confirmed works
+# res = EMmix(Y, start = list(phat = 0.2, lambda = 5))
+```
+
+<h3 id="bulbs">Lifetime and lightbulbs</h3>
+
+You want to model the mean lifetime of a lightbulb using the exponential distribution:
+$$f(y; \theta) = \frac{1}{\lambda}e^{-y/\lambda} \text{, for } y \geq 0$$
+
+The latent variable is the true lifetimes of the bulbs in the second experiment. The complete likelihood is given by the sum of the two joint likelihoods of the X lightbulbs and the unseen lifetimes of the Y lightbulbs
+$$f(\theta, X, Y) = \prod^m_{i=1}\frac{1}{\theta}e^{-x/\theta} + \prod^n_{j=1}\frac{1}{\theta}e^{-y/\theta}$$
