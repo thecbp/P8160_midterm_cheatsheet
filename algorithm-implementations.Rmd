@@ -332,6 +332,64 @@ Emix <- function(X, E, start, nreps = 10, tol = 1e-5) {
 
 <h3 id="fisher">Fisher's Genotype</h3>
 
+You have phenotype data of people and want to estimate allele frequencies. The loci are linked, so we get an observed likelihood for the phenotype data $Y$ for $n$ individuals:
+$$Y \sim Multi(n, \frac{2+\psi}{4}, \frac{1-\psi}{4}, \frac{1-\psi}{4}, \frac{\psi}{4})$$
+
+Since this is a multinomial distribution, we also know that the derivative of the log-likelihood with respect to $\psi$ is:
+$$\frac{\delta l}{\delta\psi} = \frac{y_1}{2 + \psi} + \frac{y_2 + y_3}{1 - \psi} + \frac{4}{\psi}$$
+But we cannot use Newton-Raphson because of that first probability cell. Since it's the sum of two numbers, let's say that $y_1$ can be split up into two independent, separate categories. Under the constraint $y_1 = y_{11} + y_{12}$, we can write a "complete" likelihood, which is another multinomial with 5 types:
+
+$$Y_c = Multinomial(n, 0.5, \frac{\psi}{4}, \frac{1-\psi}{4}, \frac{1-\psi}{4}, \frac{\psi}{4})$$
+Which means that the resulting complete log-likelihood is (removing terms without $\psi$):
+$$l_c = (y_{12} + y_4)log(\psi) + (y_2 + y_3)log(1-\psi)$$
+
+We also found that $y_{11} \sim Bin(y_1, \frac{0.5}{0.5 + \psi/4})$ and $y_{12} \sim Bin(n, \psi/4)$. So our E-step is:
+$$E(y_{11}) = \frac{0.5y_1}{0.5 + \psi/4}$$
+
+So, solving for $\psi$ with MLE and the linear equation that follows, we get the equation for the next $\psi^t$ in the M-step:
+$$\psi^{(t)} = \frac{y_{12}^{(t)} + y_4}{y_{12}^{(t)} + y_2 + y_3 + y_4} = \frac{y_{12}^{(t)} + y_4}{n - y_{11}^{(t)} }$$
+
+By extension:
+$$y_{12}^{(t)} = E(y_{12}| y, \psi^{(t)}) = y_1 -  \frac{0.5y_1}{0.5 + \psi/4}$$
+
+```{r}
+E.step = function(Y, params) {
+  # y = y1
+  Ey11 = (0.5 * Y[1]) / (0.5 + params/4)
+  Ey12 = Y[1] - Ey11
+  return(list(y11 = Ey11, y12 = Ey12))
+}
+
+M.step = function(Y, E) {
+  # Y - an array of the y counts
+  # E - the expectation from the E-step
+  psi = (E$y12 + Y[4]) / (E$y12 + Y[2] + Y[3] + Y[4])
+  return(psi)
+}
+
+EM.mix = function(Y, start, nreps = 100, tol = 1e-5) {
+  i = 0
+  old.params = start
+  E = E.step(Y, start)
+  diff.psi = Inf
+  res = c(iter = 0, psi = old.params)
+  while (i < nreps && diff.psi > tol) {
+    i = i + 1
+    new.params = M.step(Y, E)
+    diff.psi = abs(old.params - new.params)
+    E = E.step(Y, new.params)
+    
+    res = rbind(res, c(iter = i, psi = new.params))
+    old.params = new.params
+  }
+  return(res)
+}
+
+Y = c(125, 18, 20, 34)
+res = EM.mix(Y, start = 0.5)
+```
+
+
 <a href="#toc">Back to top</a>
 
 <h3 id="abo">ABO Blood Type</h3>
