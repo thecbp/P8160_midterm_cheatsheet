@@ -13,14 +13,15 @@ library(knitr)
 
 <h1 id="toc">Table of Contents</h1>
 
-* <a href="#mc">Monte Carlo</a>
+## <a href="#mc">Monte Carlo</a>
   * <a href="#inv-cdf">Inverse CDF</a>
   * <a href="#acrej">Acceptance-Rejection</a>
   * <a href="#mc-int">Monte Carlo Integration</a>
   * <a href="#impt-samp">Importance Sampling</a>
   * <a href="#anti">Antithetic Approach</a>
   * <a href="#cont-var">Control Variates</a>
-* <a href="#em">EM Algorithm</a>
+  
+## <a href="#em">EM Algorithm</a>
   * <a href="#gauss-mix">Mixed Gaussian</a>
   * <a href="#zip">Zero Inflated Poisson</a>
   * <a href="#bulbs">Lightbulbs</a>
