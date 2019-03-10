@@ -30,9 +30,21 @@ library(knitr)
   
 <h2 id="mc">Monte Carlo</h2>
 
-<a href="#toc">Back to top</a>
-
 <h3 id="inv-cdf">Inverse CDF</h2>
+
+$X$ is a random variable with cdf $F(X)$ which has an inverse $F^{-1}(X)$. If you plug in a uniform random variable $U$, the resulting random variable will have the same density as $X$.
+
+#### Examples
+
+```{r}
+laplace.generator = tibble(
+  uniform_vals = runif(1000),
+  laplace_vals = log(2 * uniform_vals) * (uniform_vals <= 0.5) -
+log(2 - 2 * uniform_vals) * (uniform_vals > 0.5),
+nums = seq(-10, 10, length = n),
+true_laplace = 0.5 * exp(-abs(nums)) 
+)
+```
 
 <a href="#toc">Back to top</a>
 
@@ -240,11 +252,81 @@ EMmix <- function(Y, start, nreps = 100, tol = 1e-5) {
 
 <h3 id="bulbs">Lifetime and lightbulbs</h3>
 
-You want to model the mean lifetime of a lightbulb using the exponential distribution:
-$$f(y; \theta) = \frac{1}{\lambda}e^{-y/\lambda} \text{, for } y \geq 0$$
+For experiment one: you observe $X_1, \, ... \, , X_m$ iid sample times until light bulb death
+For experiment two: you check if $m$ light bulbs at time $t$ and check if they're on. You observe $E_1, ..., E_n$ indicators $E_i = 1$ if on, $E_i = 0$ if off.
 
-The latent variable is the true lifetimes of the bulbs in the second experiment. The complete likelihood is given by the sum of the two joint likelihoods of the X lightbulbs and the unseen lifetimes of the Y lightbulbs
-$$f(\theta, X, Y) = \prod^m_{i=1}\frac{1}{\theta}e^{-x/\theta} + \prod^n_{j=1}\frac{1}{\theta}e^{-y/\theta}$$
+The life expectancy of any light bulb is modeled as an expoential distribution.
+
+Since the $X_i$ are independent of the $Y_i$, the expectation looks like:
+$$E[Y_i|X_i, E_i, \theta^t] = E[Y_i|E_i, \theta^t]$$
+
+When the observed $E_i  =1$, the life expectancy is as follows due to the memoryless property of the exponential distribution:
+$$E(Y_i|E_i = 1, \theta^t) =  t + \theta$$
+
+When the observed $E_i  = 0$, the life expectancy is as follows due to the law of total expectation $E(X) = E(E(X|Y))$.
+
+$$E(Y) = E(E(Y|E)) = E(Y|E = 0, \theta)P(E = 0, \theta) + E(Y|E = 1, \theta)P(E = 1, \theta)$$
+
+$$\theta = E(Y|E = 0, \theta)(1 - e^{-t/\theta})+ (t + \theta)e^{-t/\theta}$$
+Rearranging, we get:
+$$E(Y|E = 0, \theta) = \theta - \frac{te^{-t/\theta}}{1 - e^{-t/\theta}}$$
+
+Thus, for either case we can estimate the mean life time of each lifebulb using the latent variable
+
+
+Then, the complete log-likelihood is:
+$$l(\theta; X, Y) = -m(log(\theta) + \frac{\bar{X}}{\theta}) - \sum^n_{i=1}(log(\theta) + \frac{Y_i}{\theta})$$
+
+and then we can estimate $\theta$ by:
+$$\hat{\theta} = \frac{\sum X_i + \sum Y_i}{m+n}$$
+
+We can interpret this as the mean minus the amount of time scaled. If the light isn't out, then due to the memoryless property we would just have the time plus the mean time added.
+
+```{r}
+delta = function(E, params) {  
+  Ey0 = params$theta - params$t * exp(-params$t/params$theta) / (1 - exp(-params$t/params$theta))
+  Ey1 = params$t + params$theta
+  return((E == 0) * Ey0 + (E == 1) * Ey1)
+}
+
+mles <- function(delta, X, E) {
+  t = 8
+  m = length(X)
+  n = length(E)
+  thetahat = 1/(m + n) * (sum(X) + sum(delta))
+  return(list(theta = thetahat, t = t))
+}
+
+Emix <- function(X, E, start, nreps = 10, tol = 1e-5) {
+  i = 0
+  old.params = start
+  Z = delta(E, start)
+  
+  res = c(iter = 0, theta = old.params$theta)
+  
+  diff.theta = Inf
+  
+  while (i < nreps & diff.theta > tol) {
+    i = i + 1
+    new.params = mles(Z, X, E)
+    Z = delta(E, new.params)
+    diff.theta = abs(new.params$theta - old.params$theta)
+    res = rbind(res, 
+                c(iter = i, theta = new.params$theta))
+    old.params = new.params
+    }
+  return(res)
+}
+
+# confirmed works
+# n = 20
+# m = 20
+# X = c(4.0, 12.8, 2.9, 27.2, 2.9, 3.1, 11.2, 9.0, 8.1, 9.8,
+#       13.7, 8.3, 1.2, 0.9, 8.0, 18.8, 2.6, 22.6, 1.7, 4.0)
+# E = c(1, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+#        1, 1, 1, 1, 0, 0, 1, 0, 1, 0)
+# res = Emix(X, E, start = list(theta = 1, t = 8), nreps = 50)
+```
 
 <a href="#toc">Back to top</a>
 
