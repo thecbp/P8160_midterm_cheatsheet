@@ -11,16 +11,50 @@ library(knitr)
 ```
 
 
-# Table of Contents
+<h1 id="toc">Table of Contents</h1>
 
+* <a href="#mc">Monte Carlo</a>
+  * <a href="#inv-cdf">Inverse CDF</a>
+  * <a href="#acrej">Acceptance-Rejection</a>
+  * <a href="#mc-int">Monte Carlo Integration</a>
+  * <a href="#impt-samp">Importance Sampling</a>
+  * <a href="#anti">Antithetic Approach</a>
+  * <a href="#cont-var">Control Variates</a>
 * <a href="#em">EM Algorithm</a>
   * <a href="#gauss-mix">Mixed Gaussian</a>
   * <a href="#zip">Zero Inflated Poisson</a>
   * <a href="#bulbs">Lightbulbs</a>
-  * <a href="#">Fisher's Genotype</a>
-  * <a href="#">ABO Blood Type</a>
+  * <a href="#fisher">Fisher's Genotype</a>
+  * <a href="#abo">ABO Blood Type</a>
   
-  
+<h2 id="mc">Monte Carlo</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="inv-cdf">Inverse CDF</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="acrej">Acceptance-Rejection</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="mc-int">Monte Carlo Integration</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="impt-samp">Importance Sampling</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="anti">Antithetic Approach</h2>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="cont-var">Control Variates</h2>
+
+<a href="#toc">Back to top</a>
+
 <h2 id="em">EM Algorithm</h2>  
 
 <h3 id="gauss-mix">Mixed Gaussian</h3>
@@ -123,6 +157,8 @@ EMmix <- function(X, start, nreps = 100, tol = 1e-5) {
 #                          sig1 = 15, sig2 = 15))
 ```
 
+<a href="#toc">Back to top</a>
+
 <h3 id="zip">Zero-Inflated Poisson</h3>
 
 You have too many zeros in your data to be correctly modelled as a Poisson distirbution. The latent variable must be some underlying process that produces "true zeros" (women who are just widows and bore no children) and pseudo-zeros (widows who... have dead children?).
@@ -199,6 +235,8 @@ EMmix <- function(Y, start, nreps = 100, tol = 1e-5) {
 # res = EMmix(Y, start = list(phat = 0.2, lambda = 5))
 ```
 
+<a href="#toc">Back to top</a>
+
 <h3 id="bulbs">Lifetime and lightbulbs</h3>
 
 You want to model the mean lifetime of a lightbulb using the exponential distribution:
@@ -206,3 +244,94 @@ $$f(y; \theta) = \frac{1}{\lambda}e^{-y/\lambda} \text{, for } y \geq 0$$
 
 The latent variable is the true lifetimes of the bulbs in the second experiment. The complete likelihood is given by the sum of the two joint likelihoods of the X lightbulbs and the unseen lifetimes of the Y lightbulbs
 $$f(\theta, X, Y) = \prod^m_{i=1}\frac{1}{\theta}e^{-x/\theta} + \prod^n_{j=1}\frac{1}{\theta}e^{-y/\theta}$$
+
+<a href="#toc">Back to top</a>
+
+<h3 id="fisher">Fisher's Genotype</h3>
+
+<a href="#toc">Back to top</a>
+
+<h3 id="abo">ABO Blood Type</h3>
+
+The complete likelihood of the number of individuals is:
+$$
+\begin{aligned}
+l(n, p) = &N_{AA}log(p_A^2) + N_{AO}log(2p_Ap_O) + N_{BB}log(p_B^2) + N_{BO}log(2p_Bp_O) \\  &+ N_{AB}log(2p_Ap_B) + N_Olog(p_O^2) +log(\frac{n!}{N_{AA}N_{AB}N_{BB}N_{BO}N_{AB}N_{OO}})
+\end{aligned}
+$$
+
+Using this equation as $Q(p, \lambda|p^{(k)})$ and the Lagrange multiplier, we want to maximize:
+$$Q_L(p, \lambda|p^{(k)}) = Q(p|p^{(k)}) + \lambda(p_A + p_B + p_O - 1)$$
+
+Solving for each parameter in the maximization step, we get:
+$$p_A^{k+1} = \frac{2N^{(k)}_{AA} + N^{(k)}_{AO} + N^{(k)}_{AB}}{2n}$$
+$$p_B^{k+1} = \frac{2N^{(k)}_{BB} + N^{(k)}_{BO} + N^{(k)}_{AB}}{2n}$$
+$$p_O^{k+1} = \frac{2N^{(k)}_{OO} + N^{(k)}_{AO} + N^{(k)}_{BO}}{2n}$$
+
+```{r abo-em-algo }
+# E-step: calculating conditional means
+e.calc = function(X, params) {
+  # initial check for data
+  if ("Na" %in% names(X) && "Nb" %in% names(X) ) {
+    Na = X$Na
+    Nb = X$Nb
+  } else {
+    Na = X$Naa + X$Nao
+    Nb = X$Nbb + X$Nbo
+  }
+ 
+  return(list(
+    Naa = Na * params$pa^2 / (params$pa^2 + 2 * params$pa * params$po),
+    Nao = Na * 2 * params$pa * params$po / (params$pa^2 + 2 * params$pa * params$po),
+    Nbb = Nb * params$pb^2 / (params$pb^2 + 2 * params$pb * params$po),
+    Nbo = Nb * 2 * params$pb * params$po / (params$pb^2 + 2 * params$pb * params$po),
+    Nab = X$Nab,
+    Noo = X$Noo
+  ))
+}
+
+# M-step: updating parameters
+m.calc = function(nums) {
+  n = nums$Naa + nums$Nao + nums$Nbb + nums$Nbo + nums$Nab + nums$Noo
+  return(list(
+    pa = (2 * nums$Naa + nums$Nao + nums$Nab) / (2 * n),
+    pb = (2 * nums$Nbb + nums$Nbo + nums$Nab) / (2 * n),
+    po = (2 * nums$Noo + nums$Nao + nums$Nbo) / (2 * n)
+  ))
+}
+
+# Implementing the EM algorithm
+blood.EM = function(data, start, maxiter = 1000, tol = 1e-10) {
+  # Calculate the starting points
+  cond.expect = e.calc(X = data, params = start)
+  old.params = start
+  path = c(iter = 0, pa = start$pa, pb = start$pb, po = start$po)
+  
+  i = 0
+  diff.pa = diff.pb = diff.po = Inf
+  while (i < maxiter && diff.pa > tol && diff.pb > tol && diff.po > tol) {
+    i = i + 1
+    new.params = m.calc(cond.expect)
+    
+    # Convergence check
+    diff.pa = abs(old.params$pa - new.params$pa)
+    diff.pb = abs(old.params$pb - new.params$pb)
+    diff.pa = abs(old.params$po - new.params$po)
+    
+    cond.expect = e.calc(X = cond.expect, params = new.params)
+    path = rbind(path, 
+                 c(iter = i, pa = new.params$pa, pb = new.params$pb, po = new.params$po)
+    )
+    old.params = new.params
+  }
+  return(path)
+}
+
+# confirmed to work
+# obs = list(Na = 26, Nb = 27, Noo = 42, Nab = 7)
+# init.params = list(pa = 1/3, pb = 1/3, po = 1/3)
+# 
+# allele.est = blood.EM(data = obs, start = init.params)
+```
+
+<a href="#toc">Back to top</a>
