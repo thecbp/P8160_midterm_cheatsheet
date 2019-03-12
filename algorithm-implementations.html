@@ -128,6 +128,15 @@ $(document).ready(function () {
 </div>
 
 
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.1.0     ✔ purrr   0.2.5
+## ✔ tibble  1.4.2     ✔ dplyr   0.7.8
+## ✔ tidyr   0.8.2     ✔ stringr 1.3.1
+## ✔ readr   1.1.1     ✔ forcats 0.3.0</code></pre>
+<pre><code>## ── Conflicts ───────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>library(datasets)
 library(knitr)</code></pre>
 <h1 id="toc">
@@ -156,30 +165,60 @@ Table of Contents
 <h2 id="mc">
 Monte Carlo
 </h2>
-<p><a href="#toc">Back to top</a></p>
 <h3 id="inv-cdf">
 Inverse CDF
 </h2>
+<p><span class="math inline">\(X\)</span> is a random variable with cdf <span class="math inline">\(F(X)\)</span> which has an inverse <span class="math inline">\(F^{-1}(X)\)</span>. If you plug in a uniform random variable <span class="math inline">\(U\)</span>, the resulting random variable will have the same density as <span class="math inline">\(X\)</span>.</p>
+<div id="examples" class="section level4">
+<h4>Examples</h4>
+<pre class="r"><code># Generate a Laplace distribution
+n = 1000
+laplace.generator = tibble(
+  uniform_vals = runif(n),
+  laplace_vals = log(2 * uniform_vals) * (uniform_vals &lt;= 0.5) -
+    log(2 - 2 * uniform_vals) * (uniform_vals &gt; 0.5),
+  nums = seq(-10, 10, length = n),
+  true_laplace = 0.5 * exp(-abs(nums)) 
+)</code></pre>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="acrej">
 Acceptance-Rejection
 </h2>
+<p>A method for generating a random number sequence in cases where the inverse CDF of the desired density does not have a closed form. You have a target pdf/cdf <span class="math inline">\(F(.)\)</span>, so you should pick a <span class="math inline">\(G(.)\)</span> that is easy to sample from (ie can just generate from R or use inverse-CDF to generate). <span class="math inline">\(G(.)\)</span> should also have the same range as the target density.</p>
+<p>The ratio <span class="math inline">\(\frac{f(Y)}{Mg(Y)}\)</span> is also a random variable that takes values from 0 to one. <span class="math inline">\(M\)</span> is chosen to be the supremum of <span class="math inline">\(\frac{f(X)}{g(X)}\)</span> in practice.</p>
+<p>After generating a bunch of <span class="math inline">\(y\)</span> from the distribuion <span class="math inline">\(g(Y)\)</span> and a bunch of uniforms, you keep all the <span class="math inline">\(y\)</span> that satisfy the inequality <span class="math inline">\(u \leq \frac{f(Y)}{Mg(Y)}\)</span></p>
+</div>
+<div id="code" class="section level4">
+<h4>Code</h4>
+<pre class="r"><code># From lecture
+accrej &lt;- function(fdens, gdens, M, x)
+  return(x[runif(length(x)) &lt;= fdens(x) / (M * gdens(x))])</code></pre>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="mc-int">
 Monte Carlo Integration
 </h2>
-<p><a href="#toc">Back to top</a></p>
+<p>Sometimes you have integrals that you can’t compute analytically. Since you have to compute it numerically, it would be good to use Monte Carlo integration.</p>
+<p><span class="math display">\[\int^b_ag(x)dx = (b-a)\int^b_ag(x)\frac{1}{b-a}dx = (b-a)E(g(U) \approx(b-a)\frac{1}{n}\sum^n_{i=1}g(U_i)\]</span></p>
 <h3 id="impt-samp">
 Importance Sampling
 </h2>
+<p>You may also generalize the above to any distribution <span class="math inline">\(X\)</span>: <span class="math display">\[\int^b_ag(x)dx = \int^b_a\frac{g(x)}{p(x)}p(x)dx = E(\frac{g(X_i)}{p(X_i)}) \approx \frac{1}{n}\sum\frac{g(X_i)}{p(X_i)}\]</span></p>
+<p>Since a and b are the ends of the support of <span class="math inline">\(p(X)\)</span>, it essentially acts as an expectation.</p>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="anti">
 Antithetic Approach
 </h2>
+<p>A variant of Monte Carlo intergration. Used to minimize the variance of the estimated numerical estimation of the integral.</p>
+<p><span class="math display">\[\int^1_0g(x)dx = \int^1_0\frac{1}{2}[g(x) + g(1-x)]dx\]</span> The right hand side has a lower variance than the original Monte Carlo integration.</p>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="cont-var">
 Control Variates
 </h2>
+<p>Another variation of Monte Carlo Integration and another way to reduce variance of the estimated integral. In general, represented as: <span class="math display">\[\int g(x)f(x)dx = \int m(x)f(x)dx + \int(g(x) - m(x)) f(x)dx\]</span></p>
+<p>This is approximated by: <span class="math display">\[\int m(x)f(x)dx + \int(g(x) - m(x)) f(x)dx = \int m(x)f(x)dx + \frac{1}{n}\sum(g(X_i) - m(X_i))\]</span></p>
+<p><span class="math inline">\(m(x)\)</span> is chosen such that the left integral can be solved for analytically. You want <span class="math inline">\(g(X)\)</span> and <span class="math inline">\(m(X)\)</span> to be very highly positively correlated (unlike negatively correlated in antithetic approach).</p>
+<p>This approach can also take advantage of a weighting verion <span class="math display">\[\beta\int m(x)f(x)dx + \frac{1}{n}\sum(g(X_i) - \beta m(X_i))\]</span></p>
+<p>where <span class="math inline">\(\beta\)</span> is the coefficient recieved from regressing <span class="math inline">\(g(X)\)</span> from <span class="math inline">\(m(X)\)</span></p>
 <p><a href="#toc">Back to top</a></p>
 <h2 id="em">
 EM Algorithm
@@ -191,6 +230,7 @@ Mixed Gaussian
 <p><span class="math display">\[L_{obs}(x) = \prod^n_{i=1}(1 - p)f(x_i, \mu_1, \sigma_1) + p f(x_i, \mu_2, \sigma_2)\]</span> where each <span class="math inline">\(f\)</span> is just a normal density function.</p>
 <p>Your latent variable is <span class="math inline">\(Z \sim Bin(1,p)\)</span> such that if <span class="math inline">\(Z = 0\)</span>, <span class="math inline">\(X_i\)</span> comes from the first normal and the second if <span class="math inline">\(Z = 1\)</span>.</p>
 <p>Thus, the complete log-likelihood is: <span class="math display">\[l(X,Z,\theta)  = \sum^n_{i=1}[Z_ilog(p) + (1-Z_i)log(1-p) +Z_ilogf_2 + (1-Z_i)f_1]\]</span></p>
+</div>
 <div id="e-step-given-current-parameters-what-is-the-expectation" class="section level4">
 <h4>E-step: given current parameters, what is the expectation?</h4>
 <p>Define <span class="math inline">\(\delta^{(t)}_i = E(Z_i|x_i, \theta^{(t)})\)</span> as the expected value of the complete log-likelihood. <span class="math inline">\(\delta^{(t)}_i\)</span> will then become our current guess for <span class="math inline">\(Z_i\)</span>.</p>
@@ -201,7 +241,7 @@ Mixed Gaussian
 <h4>M-step: given the current estimate, what are the new parameters that maximize the complete log-likelihood?</h4>
 <p>The next set of parameters <span class="math inline">\(\theta^{(t+1)}\)</span> are those that maximize the complete log-likelihood, substituting <span class="math inline">\(\delta^{(t)}_i\)</span> for <span class="math inline">\(Z_i\)</span>. (ie derive with respect to each of the parameters you need and set it to zero, solve for the parameter)</p>
 </div>
-<div id="code" class="section level4">
+<div id="code-1" class="section level4">
 <h4>Code</h4>
 <pre class="r"><code># E-step evaluating conditional means E(Z_i | X_i , pars)
 delta &lt;- function(X, pars){
@@ -294,7 +334,7 @@ Zero-Inflated Poisson
 <p><span class="math display">\[p^{(t+1)} = \frac{\sum z_i^{(t)}}{n}\]</span></p>
 <p><span class="math display">\[\lambda^{(t+1)} = \frac{\sum Y_i(1 - z_i^{(t)})}{\sum z_i^{(t)}}\]</span></p>
 </div>
-<div id="code-1" class="section level4">
+<div id="code-2" class="section level4">
 <h4>Code:</h4>
 <pre class="r"><code>Y &lt;- c(rep(0,3062), rep(1,587), rep(2,284), 
        rep(3,103), rep(4,33), rep(5,4), rep(6,2))
@@ -347,12 +387,104 @@ EMmix &lt;- function(Y, start, nreps = 100, tol = 1e-5) {
 <h3 id="bulbs">
 Lifetime and lightbulbs
 </h3>
-<p>You want to model the mean lifetime of a lightbulb using the exponential distribution: <span class="math display">\[f(y; \theta) = \frac{1}{\lambda}e^{-y/\lambda} \text{, for } y \geq 0\]</span></p>
-<p>The latent variable is the true lifetimes of the bulbs in the second experiment. The complete likelihood is given by the sum of the two joint likelihoods of the X lightbulbs and the unseen lifetimes of the Y lightbulbs <span class="math display">\[f(\theta, X, Y) = \prod^m_{i=1}\frac{1}{\theta}e^{-x/\theta} + \prod^n_{j=1}\frac{1}{\theta}e^{-y/\theta}\]</span></p>
+<p>For experiment one: you observe <span class="math inline">\(X_1, \, ... \, , X_m\)</span> iid sample times until light bulb death For experiment two: you check if <span class="math inline">\(m\)</span> light bulbs at time <span class="math inline">\(t\)</span> and check if they’re on. You observe <span class="math inline">\(E_1, ..., E_n\)</span> indicators <span class="math inline">\(E_i = 1\)</span> if on, <span class="math inline">\(E_i = 0\)</span> if off.</p>
+<p>The life expectancy of any light bulb is modeled as an expoential distribution.</p>
+<p>Since the <span class="math inline">\(X_i\)</span> are independent of the <span class="math inline">\(Y_i\)</span>, the expectation looks like: <span class="math display">\[E[Y_i|X_i, E_i, \theta^t] = E[Y_i|E_i, \theta^t]\]</span></p>
+<p>When the observed <span class="math inline">\(E_i =1\)</span>, the life expectancy is as follows due to the memoryless property of the exponential distribution: <span class="math display">\[E(Y_i|E_i = 1, \theta^t) =  t + \theta\]</span></p>
+<p>When the observed <span class="math inline">\(E_i = 0\)</span>, the life expectancy is as follows due to the law of total expectation <span class="math inline">\(E(X) = E(E(X|Y))\)</span>.</p>
+<p><span class="math display">\[E(Y) = E(E(Y|E)) = E(Y|E = 0, \theta)P(E = 0, \theta) + E(Y|E = 1, \theta)P(E = 1, \theta)\]</span></p>
+<p><span class="math display">\[\theta = E(Y|E = 0, \theta)(1 - e^{-t/\theta})+ (t + \theta)e^{-t/\theta}\]</span> Rearranging, we get: <span class="math display">\[E(Y|E = 0, \theta) = \theta - \frac{te^{-t/\theta}}{1 - e^{-t/\theta}}\]</span></p>
+<p>Thus, for either case we can estimate the mean life time of each lifebulb using the latent variable</p>
+<p>Then, the complete log-likelihood is: <span class="math display">\[l(\theta; X, Y) = -m(log(\theta) + \frac{\bar{X}}{\theta}) - \sum^n_{i=1}(log(\theta) + \frac{Y_i}{\theta})\]</span></p>
+<p>and then we can estimate <span class="math inline">\(\theta\)</span> by: <span class="math display">\[\hat{\theta} = \frac{\sum X_i + \sum Y_i}{m+n}\]</span></p>
+<p>We can interpret this as the mean minus the amount of time scaled. If the light isn’t out, then due to the memoryless property we would just have the time plus the mean time added.</p>
+<pre class="r"><code>delta = function(E, params) {  
+  Ey0 = params$theta - params$t * exp(-params$t/params$theta) / (1 - exp(-params$t/params$theta))
+  Ey1 = params$t + params$theta
+  return((E == 0) * Ey0 + (E == 1) * Ey1)
+}
+
+mles &lt;- function(delta, X, E) {
+  t = 8
+  m = length(X)
+  n = length(E)
+  thetahat = 1/(m + n) * (sum(X) + sum(delta))
+  return(list(theta = thetahat, t = t))
+}
+
+Emix &lt;- function(X, E, start, nreps = 10, tol = 1e-5) {
+  i = 0
+  old.params = start
+  Z = delta(E, start)
+  
+  res = c(iter = 0, theta = old.params$theta)
+  
+  diff.theta = Inf
+  
+  while (i &lt; nreps &amp; diff.theta &gt; tol) {
+    i = i + 1
+    new.params = mles(Z, X, E)
+    Z = delta(E, new.params)
+    diff.theta = abs(new.params$theta - old.params$theta)
+    res = rbind(res, 
+                c(iter = i, theta = new.params$theta))
+    old.params = new.params
+    }
+  return(res)
+}
+
+# confirmed works
+# n = 20
+# m = 20
+# X = c(4.0, 12.8, 2.9, 27.2, 2.9, 3.1, 11.2, 9.0, 8.1, 9.8,
+#       13.7, 8.3, 1.2, 0.9, 8.0, 18.8, 2.6, 22.6, 1.7, 4.0)
+# E = c(1, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+#        1, 1, 1, 1, 0, 0, 1, 0, 1, 0)
+# res = Emix(X, E, start = list(theta = 1, t = 8), nreps = 50)</code></pre>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="fisher">
 Fisher’s Genotype
 </h3>
+<p>You have phenotype data of people and want to estimate allele frequencies. The loci are linked, so we get an observed likelihood for the phenotype data <span class="math inline">\(Y\)</span> for <span class="math inline">\(n\)</span> individuals: <span class="math display">\[Y \sim Multi(n, \frac{2+\psi}{4}, \frac{1-\psi}{4}, \frac{1-\psi}{4}, \frac{\psi}{4})\]</span></p>
+<p>Since this is a multinomial distribution, we also know that the derivative of the log-likelihood with respect to <span class="math inline">\(\psi\)</span> is: <span class="math display">\[\frac{\delta l}{\delta\psi} = \frac{y_1}{2 + \psi} + \frac{y_2 + y_3}{1 - \psi} + \frac{4}{\psi}\]</span> But we cannot use Newton-Raphson because of that first probability cell. Since it’s the sum of two numbers, let’s say that <span class="math inline">\(y_1\)</span> can be split up into two independent, separate categories. Under the constraint <span class="math inline">\(y_1 = y_{11} + y_{12}\)</span>, we can write a “complete” likelihood, which is another multinomial with 5 types:</p>
+<p><span class="math display">\[Y_c = Multinomial(n, 0.5, \frac{\psi}{4}, \frac{1-\psi}{4}, \frac{1-\psi}{4}, \frac{\psi}{4})\]</span> Which means that the resulting complete log-likelihood is (removing terms without <span class="math inline">\(\psi\)</span>): <span class="math display">\[l_c = (y_{12} + y_4)log(\psi) + (y_2 + y_3)log(1-\psi)\]</span></p>
+<p>We also found that <span class="math inline">\(y_{11} \sim Bin(y_1, \frac{0.5}{0.5 + \psi/4})\)</span> and <span class="math inline">\(y_{12} \sim Bin(n, \psi/4)\)</span>. So our E-step is: <span class="math display">\[E(y_{11}) = \frac{0.5y_1}{0.5 + \psi/4}\]</span></p>
+<p>So, solving for <span class="math inline">\(\psi\)</span> with MLE and the linear equation that follows, we get the equation for the next <span class="math inline">\(\psi^t\)</span> in the M-step: <span class="math display">\[\psi^{(t)} = \frac{y_{12}^{(t)} + y_4}{y_{12}^{(t)} + y_2 + y_3 + y_4} = \frac{y_{12}^{(t)} + y_4}{n - y_{11}^{(t)} }\]</span></p>
+<p>By extension: <span class="math display">\[y_{12}^{(t)} = E(y_{12}| y, \psi^{(t)}) = y_1 -  \frac{0.5y_1}{0.5 + \psi/4}\]</span></p>
+<pre class="r"><code>E.step = function(Y, params) {
+  # y = y1
+  Ey11 = (0.5 * Y[1]) / (0.5 + params/4)
+  Ey12 = Y[1] - Ey11
+  return(list(y11 = Ey11, y12 = Ey12))
+}
+
+M.step = function(Y, E) {
+  # Y - an array of the y counts
+  # E - the expectation from the E-step
+  psi = (E$y12 + Y[4]) / (E$y12 + Y[2] + Y[3] + Y[4])
+  return(psi)
+}
+
+EM.mix = function(Y, start, nreps = 100, tol = 1e-5) {
+  i = 0
+  old.params = start
+  E = E.step(Y, start)
+  diff.psi = Inf
+  res = c(iter = 0, psi = old.params)
+  while (i &lt; nreps &amp;&amp; diff.psi &gt; tol) {
+    i = i + 1
+    new.params = M.step(Y, E)
+    diff.psi = abs(old.params - new.params)
+    E = E.step(Y, new.params)
+    
+    res = rbind(res, c(iter = i, psi = new.params))
+    old.params = new.params
+  }
+  return(res)
+}
+
+Y = c(125, 18, 20, 34)
+res = EM.mix(Y, start = 0.5)</code></pre>
 <p><a href="#toc">Back to top</a></p>
 <h3 id="abo">
 ABO Blood Type

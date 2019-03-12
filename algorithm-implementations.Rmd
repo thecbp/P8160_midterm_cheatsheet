@@ -6,6 +6,7 @@ output: html_document
 ---
 
 ```{r}
+library(tidyverse)
 library(datasets)
 library(knitr)
 ```
@@ -37,12 +38,14 @@ $X$ is a random variable with cdf $F(X)$ which has an inverse $F^{-1}(X)$. If yo
 #### Examples
 
 ```{r}
+# Generate a Laplace distribution
+n = 1000
 laplace.generator = tibble(
-  uniform_vals = runif(1000),
+  uniform_vals = runif(n),
   laplace_vals = log(2 * uniform_vals) * (uniform_vals <= 0.5) -
-log(2 - 2 * uniform_vals) * (uniform_vals > 0.5),
-nums = seq(-10, 10, length = n),
-true_laplace = 0.5 * exp(-abs(nums)) 
+    log(2 - 2 * uniform_vals) * (uniform_vals > 0.5),
+  nums = seq(-10, 10, length = n),
+  true_laplace = 0.5 * exp(-abs(nums)) 
 )
 ```
 
@@ -50,21 +53,59 @@ true_laplace = 0.5 * exp(-abs(nums))
 
 <h3 id="acrej">Acceptance-Rejection</h2>
 
+A method for generating a random number sequence in cases where the inverse CDF of the desired density does not have a closed form. You have a target pdf/cdf $F(.)$, so you should pick a $G(.)$ that is easy to sample from (ie can just generate from R or use inverse-CDF to generate). $G(.)$ should also have the same range as the target density.
+
+The ratio $\frac{f(Y)}{Mg(Y)}$ is also a random variable that takes values from 0 to one. $M$ is chosen to be the supremum of $\frac{f(X)}{g(X)}$ in practice.
+
+After generating a bunch of $y$ from the distribuion $g(Y)$ and a bunch of uniforms, you keep all the $y$ that satisfy the inequality $u \leq \frac{f(Y)}{Mg(Y)}$
+
+#### Code
+```{r}
+# From lecture
+accrej <- function(fdens, gdens, M, x)
+  return(x[runif(length(x)) <= fdens(x) / (M * gdens(x))])
+```
+
 <a href="#toc">Back to top</a>
 
 <h3 id="mc-int">Monte Carlo Integration</h2>
 
-<a href="#toc">Back to top</a>
+Sometimes you have integrals that you can't compute analytically. Since you have to compute it numerically, it would be good to use Monte Carlo integration.
+
+$$\int^b_ag(x)dx = (b-a)\int^b_ag(x)\frac{1}{b-a}dx = (b-a)E(g(U) \approx(b-a)\frac{1}{n}\sum^n_{i=1}g(U_i)$$
 
 <h3 id="impt-samp">Importance Sampling</h2>
+
+You may also generalize the above to any distribution $X$:
+$$\int^b_ag(x)dx = \int^b_a\frac{g(x)}{p(x)}p(x)dx = E(\frac{g(X_i)}{p(X_i)}) \approx \frac{1}{n}\sum\frac{g(X_i)}{p(X_i)}$$
+
+Since a and b are the ends of the support of $p(X)$, it essentially acts as an expectation.
 
 <a href="#toc">Back to top</a>
 
 <h3 id="anti">Antithetic Approach</h2>
 
+A variant of Monte Carlo intergration. Used to minimize the variance of the estimated numerical estimation of the integral.
+
+$$\int^1_0g(x)dx = \int^1_0\frac{1}{2}[g(x) + g(1-x)]dx$$
+The right hand side has a lower variance than the original Monte Carlo integration.
+
 <a href="#toc">Back to top</a>
 
 <h3 id="cont-var">Control Variates</h2>
+
+Another variation of Monte Carlo Integration and another way to reduce variance of the estimated integral. In general, represented as:
+$$\int g(x)f(x)dx = \int m(x)f(x)dx + \int(g(x) - m(x)) f(x)dx$$
+
+This is approximated by:
+$$\int m(x)f(x)dx + \int(g(x) - m(x)) f(x)dx = \int m(x)f(x)dx + \frac{1}{n}\sum(g(X_i) - m(X_i))$$
+
+$m(x)$ is chosen such that the left integral can be solved for analytically. You want $g(X)$ and $m(X)$ to be very highly positively correlated (unlike negatively correlated in antithetic approach).
+
+This approach can also take advantage of a weighting verion
+$$\beta\int m(x)f(x)dx + \frac{1}{n}\sum(g(X_i) - \beta m(X_i))$$
+
+where $\beta$ is the coefficient recieved from regressing $g(X)$ from $m(X)$
 
 <a href="#toc">Back to top</a>
 
