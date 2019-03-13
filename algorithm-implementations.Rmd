@@ -546,5 +546,23 @@ $$l_{obs}(X; \theta) = \sum^n_{i=1} log \bigg( \sum^k_{j=1} p_j N(x_i|\mu_j, \Si
 
 The $\theta$ is the collection of all the means and variance-covariance matrices and the probabilities of being in the $k^{th}$ cluster needs to be estimated. 
 
+The EM algorithm incorporates a kind of "soft" categorization (ie a point can be classified as being majorly/minorly part of many clusters). Therefore, we will have an array of probabilities that each point is associated with each cluster. 
+
+$$\gamma^j_i = P(Z = j|X = x_i) = \frac{p_jN(x_i|\mu_j, \Sigma_j)}{\sum^k_{c=1} p_cN(x_i|\mu_c, \Sigma_c)}$$
+
+And the total amount of points "soft-assigned" to c.
+$$n_c = \sum^n_{i=1} \gamma^c_i$$
+
+$$\mu_{MLE} = \frac{1}{n}\sum^n_{i=1} x_i$$
+
+$$\mu_c^{(t+1)} = \frac{1}{n_c}\sum^n_{i=1}$$
+
+$$\Sigma_c^{(t+1)} =\frac{1}{n_c} \sum^n_{i=1} \gamma^c_i (x_i - \mu_{MLE})(x_i - \mu_{MLE})^T$$
+
+$$p^{(t+1)}_c = \frac{n_c}{c}$$
+
+
+
+
 
 
