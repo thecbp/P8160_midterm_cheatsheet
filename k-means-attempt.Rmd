@@ -167,8 +167,8 @@ ggplot(data = data, aes(x = V1, y = V2)) +
 ggplot(data = data, aes(x = V1, y = V2)) + 
   geom_point() +
   geom_point(aes(x = clusters[1], y = clusters[2]), color = "red") + 
-  geom_point(aes(x = clusters[3], y = clusters[4]), color = "blue") + 
-  geom_point(aes(x = clusters[5], y = clusters[6]), color = "green")
+  geom_point(aes(x = clusters[3], y = clusters[4]), color = "green") + 
+  geom_point(aes(x = clusters[5], y = clusters[6]), color = "blue")
 
 ggplot(data = new.data, aes(x = V1, y = V2, color = labels)) + 
   geom_point() + theme(legend.position = "none")
