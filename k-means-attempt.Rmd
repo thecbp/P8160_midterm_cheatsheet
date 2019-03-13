@@ -1,0 +1,162 @@
+---
+title: "K-Means Attempt"
+author: "Christian Pascual"
+date: "3/12/2019"
+output: html_document
+---
+
+```{r}
+# Data generation
+set.seed(123123)
+Sigma = matrix(c(1, 0.5, 0.5, 1), 2, 2)
+x1 = mvrnorm(n = 200, mu = c(0 ,0), Sigma)
+Sigma = matrix(c(2,0.5,0.5,2),2,2)
+x2 = mvrnorm(n = 200, mu = c (0, 5), Sigma)
+Sigma = matrix(c(3,0.5,0.5,3),2,2)
+x3 = mvrnorm(n = 200, mu = c(6 ,4), Sigma)
+xx =  rbind(x1, x2, x3)
+```
+
+We know from the data source that there are 600 points and 3 "true" centers. Therefore, the notation that we were given boils down to:
+
+$$\mu = \{ \mu_1, \mu_2, \mu_3\}$$
+The $r$ vector corresponds to the hard assignment. If the first dot was assigned to the first cluster, then $r$ would look like:
+$$r_1 = ( r_{11}, r_{21}, r_{31} ) = (1, 0, 0)$$
+
+
+```{r}
+# Standardize the data
+standardize = function(col) {
+  mean = mean(col)
+  stdev = sd(col)
+  return((col - mean)/stdev)
+}
+data = as.tibble(xx) %>% map_df(.x = ., standardize)
+plot(data)
+
+### Initialize clusters randomly
+# establish bounds of the standardized data
+min.V1 = min(data$V1)
+max.V1 = max(data$V1)
+min.V2 = min(data$V2)
+max.V2 = max(data$V2)
+
+# something to calculate the objective function
+calc.cluster.dist = function(point, clusters, assignments) {
+  # Function to handle the inner loop
+  
+  # point is a row in the dataset
+  # clusters is organized as an array of length 6
+  # assignments is the hard assignments 
+  # first two represent locations of first cluster... etc
+  
+  dist1 = assignments[1] * 
+    ((point$V1 - clusters[1])^2 + (point$V2 - clusters[2])^2)
+  dist2 = assignments[2] * 
+    ((point$V1 - clusters[3])^2 + (point$V2 - clusters[4])^2)
+  dist3 = assignments[3] * 
+    ((point$V1 - clusters[5])^2 + (point$V2 - clusters[6])^2)
+  
+  return(dist1 + dist2 + dist3)
+}
+
+# something to calculate the entire objective function
+calc.obj = function(data, clusters, assignments) {
+  total = 0
+  for (i in 1:nrow(data)) {
+    total = total + calc.cluster.dist(point = data[i,], 
+                                      clusters = clusters,
+                                      assignments = assignments)
+  }
+  return(total)
+}
+
+# calculate distances and assign a cluster
+assign.cluster = function(point, clusters) {
+  dist1 = (point$V1 - clusters[1])^2 + (point$V2 - clusters[2])^2
+  dist2 = (point$V1 - clusters[3])^2 + (point$V2 - clusters[4])^2
+  dist3 = (point$V1 - clusters[5])^2 + (point$V2 - clusters[6])^2
+  dists = c(dist1, dist2, dist3)
+  min.dist = max(dists)
+  r = ifelse(dists == min.dist, 1, 0)
+  return(r)
+}
+
+label.cluster = function(ass) {
+  if (ass[1] == 1) {
+    return(1)
+  } else if (ass[2] == 1) {
+    return(2)
+  } else if (ass[3] == 1) {
+    return(3)
+  }
+}
+
+recalc.clusters = function(data, labels) {
+  # Filter for the rows by the cluster they were assigned to
+  label1.data = data[which(labels == 1),]
+  label2.data = data[which(labels == 2),]
+  label3.data = data[which(labels == 3),]
+  
+  return(c(
+    cluster1.V1 = sum(label1.data$V1)/length(label1.data),
+    cluster1.V2 = sum(label1.data$V2)/length(label1.data),
+    cluster2.V1 = sum(label2.data$V1)/length(label2.data),
+    cluster2.V2 = sum(label2.data$V2)/length(label2.data),
+    cluster3.V1 = sum(label3.data$V1)/length(label3.data),
+    cluster3.V2 = sum(label3.data$V2)/length(label3.data)
+  ))
+}
+
+```
+
+```{r}
+initialize the clusters
+init.clusters = c(
+  cluster1.V1 = runif(1, min.V1, max.V1),
+  cluster1.V2 = runif(1, min.V2, max.V2),
+  cluster2.V1 = runif(1, min.V1, max.V1),
+  cluster2.V2 = runif(1, min.V2, max.V2),
+  cluster3.V1 = runif(1, min.V1, max.V1),
+  cluster3.V2 = runif(1, min.V2, max.V2)
+)
+```
+
+```{r}
+# welp here we go
+set.seed(300000)
+maxiter = 1000
+i = 0
+tol = 1e-5
+clusters = init.clusters
+cluster.path = NULL
+diff.obj = Inf
+old.obj = 0
+
+# keep track of cluster paths
+cluster.path = NULL
+
+while (i < maxiter && diff.obj > tol) {
+  i = i + 1
+  label.vec = NULL
+  for (j in 1:nrow(data)) {
+    # Grab the point in the dataset
+    point = data[j,]
+
+    # Make the initial assignments and get labels
+    asses = assign.cluster(point = point, clusters = clusters)
+    label = label.cluster(asses)
+    label.vec = c(label.vec, label)
+
+    # Now labels contains all of the group assignments
+  }
+  
+  # must reassign clusters
+  clusters = recalc.clusters(data = data, labels = label.vec)
+  
+  # Add the clusters to the cluster tracker
+  cluster.path = rbind(cluster.path, clusters)
+}
+```
+
+

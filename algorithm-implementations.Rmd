@@ -5,10 +5,11 @@ date: "3/9/2019"
 output: html_document
 ---
 
-```{r}
+```{r, message = FALSE}
 library(tidyverse)
 library(datasets)
 library(knitr)
+library(MASS)
 ```
 
 
@@ -28,6 +29,7 @@ library(knitr)
   * <a href="#bulbs">Lightbulbs</a>
   * <a href="#fisher">Fisher's Genotype</a>
   * <a href="#abo">ABO Blood Type</a>
+  * <a href="#kmeans">K-Means</a>
   
 <h2 id="mc">Monte Carlo</h2>
 
@@ -110,6 +112,16 @@ where $\beta$ is the coefficient recieved from regressing $g(X)$ from $m(X)$
 <a href="#toc">Back to top</a>
 
 <h2 id="em">EM Algorithm</h2>  
+
+### General Workflow:
+
+1) What is the observed likelihood that you want to maximize?
+2) What is the latent data that you have to model?
+3) What is the complete likelihood incorporating the latent data?
+4) What is the expression for the expectation?
+5) Calculate your expected value of your latent in E-step
+6) Calculate your new parameters based on this expectation
+7) Iterate until convergence
 
 <h3 id="gauss-mix">Mixed Gaussian</h3>
 
@@ -517,3 +529,22 @@ blood.EM = function(data, start, maxiter = 1000, tol = 1e-10) {
 ```
 
 <a href="#toc">Back to top</a>
+
+<h3 href="kmeans">K-Means</a>
+
+This can be viewed as a generalization to the mixed model with just two Gaussians. Each cluster represents a multivariate Gaussian and there is a corresponding probability of being in that Gaussian. Recall that the observed likelihood of the two Gaussian mix was: 
+
+$$L_{obs}(x) = \prod^n_{i=1}(1 - p)f(x_i, \mu_1, \sigma_1) + p f(x_i, \mu_2, \sigma_2)$$
+Expanding this to account for $k$ Gaussians corresponds to:
+
+For just one observation, the density is:
+$$f(x) = \sum^k_{i=1}p_i N(x_i|\mu_i, \Sigma_i)$$
+
+$$L_{obs}(X; \theta) = \prod^n_{i=1} \sum^k_{j=1} p_j N(x_i|\mu_j, \Sigma_j)$$
+
+$$l_{obs}(X; \theta) = \sum^n_{i=1} log \bigg( \sum^k_{j=1} p_j N(x_i|\mu_j, \Sigma_j) \bigg)$$
+
+The $\theta$ is the collection of all the means and variance-covariance matrices and the probabilities of being in the $k^{th}$ cluster needs to be estimated. 
+
+
+

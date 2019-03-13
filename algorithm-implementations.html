@@ -129,12 +129,12 @@ $(document).ready(function () {
 
 
 <pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## ── Attaching packages ────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ── Attaching packages ──────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
 <pre><code>## ✔ ggplot2 3.1.0     ✔ purrr   0.2.5
 ## ✔ tibble  1.4.2     ✔ dplyr   0.7.8
 ## ✔ tidyr   0.8.2     ✔ stringr 1.3.1
 ## ✔ readr   1.1.1     ✔ forcats 0.3.0</code></pre>
-<pre><code>## ── Conflicts ───────────────────────────────────────── tidyverse_conflicts() ──
+<pre><code>## ── Conflicts ─────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>library(datasets)
@@ -223,6 +223,18 @@ Control Variates
 <h2 id="em">
 EM Algorithm
 </h2>
+</div>
+<div id="general-workflow" class="section level3">
+<h3>General Workflow:</h3>
+<ol style="list-style-type: decimal">
+<li>What is the observed likelihood that you want to maximize?</li>
+<li>What is the latent data that you have to model?</li>
+<li>What is the complete likelihood incorporating the latent data?</li>
+<li>What is the expression for the expectation?</li>
+<li>Calculate your expected value of your latent in E-step</li>
+<li>Calculate your new parameters based on this expectation</li>
+<li>Iterate until convergence</li>
+</ol>
 <h3 id="gauss-mix">
 Mixed Gaussian
 </h3>
@@ -230,7 +242,6 @@ Mixed Gaussian
 <p><span class="math display">\[L_{obs}(x) = \prod^n_{i=1}(1 - p)f(x_i, \mu_1, \sigma_1) + p f(x_i, \mu_2, \sigma_2)\]</span> where each <span class="math inline">\(f\)</span> is just a normal density function.</p>
 <p>Your latent variable is <span class="math inline">\(Z \sim Bin(1,p)\)</span> such that if <span class="math inline">\(Z = 0\)</span>, <span class="math inline">\(X_i\)</span> comes from the first normal and the second if <span class="math inline">\(Z = 1\)</span>.</p>
 <p>Thus, the complete log-likelihood is: <span class="math display">\[l(X,Z,\theta)  = \sum^n_{i=1}[Z_ilog(p) + (1-Z_i)log(1-p) +Z_ilogf_2 + (1-Z_i)f_1]\]</span></p>
-</div>
 <div id="e-step-given-current-parameters-what-is-the-expectation" class="section level4">
 <h4>E-step: given current parameters, what is the expectation?</h4>
 <p>Define <span class="math inline">\(\delta^{(t)}_i = E(Z_i|x_i, \theta^{(t)})\)</span> as the expected value of the complete log-likelihood. <span class="math inline">\(\delta^{(t)}_i\)</span> will then become our current guess for <span class="math inline">\(Z_i\)</span>.</p>
@@ -560,6 +571,7 @@ blood.EM = function(data, start, maxiter = 1000, tol = 1e-10) {
 # 
 # allele.est = blood.EM(data = obs, start = init.params)</code></pre>
 <p><a href="#toc">Back to top</a></p>
+</div>
 </div>
 </div>
 
